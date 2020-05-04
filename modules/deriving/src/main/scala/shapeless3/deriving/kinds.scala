@@ -115,7 +115,7 @@ object K0 {
 }
 
 object K1 {
-  type Kind[C, O[_]] = C { type Kind = K1.type ; type MirroredType = O ; type MirroredElemTypes[_] }
+  type Kind[C, O[_]] = C { type Kind = K1.type ; type MirroredType = O ; type MirroredElemTypes[_] <: Tuple }
   type Generic[O[_]] = Kind[Mirror, O]
   type ProductGeneric[O[_]] = Kind[Mirror.Product, O]
   type CoproductGeneric[O[_]] = Kind[Mirror.Sum, O]
@@ -168,9 +168,16 @@ object K1 {
         case p: ProductGeneric[T]   => f(using p.asInstanceOf)
         case c: CoproductGeneric[T] => g(using c.asInstanceOf)
       }
-
+ 
     inline def [F[_[_]], T[_], A, R](inst: Instances[F, T]) map(x: T[A])(f: [t[_]] => (F[t], t[A]) => t[R]): T[R] =
-      inst.erasedMap(x)(f.asInstanceOf).asInstanceOf
+      inst.erasedMap(x)(f.asInstanceOf).asInstanceOf[T[R]]
+
+    inline def [F[_[_]], T[_], U[_], A, R](inst: ProductInstances[F, T]) traverse
+    (x: T[A])
+    (f: [t[_]] => (F[t], t[A]) => U[t[R]])
+    (s: (Array[U[R]], Array[R] => T[R]) => U[T[R]])
+    : U[T[R]] =
+      inst.erasedTraverse(x.asInstanceOf)(f.asInstanceOf)(s.asInstanceOf).asInstanceOf[U[T[R]]]
 
     inline def [F[_[_]], T[_], R](inst: ProductInstances[F, T]) construct(f: [t[_]] => F[t] => t[R]): T[R] =
       inst.erasedConstruct(f.asInstanceOf).asInstanceOf
@@ -185,6 +192,7 @@ object K1 {
       inst.erasedFold(x)(f.asInstanceOf).asInstanceOf
     inline def [F[_[_]], T[_], A, B, R](inst: CoproductInstances[F, T]) fold2(x: T[A], y: T[B])(a: => R)(f: [t[_]] => (F[t], t[A], t[B]) => R): R =
       inst.erasedFold2(x, y)(a.asInstanceOf)(f.asInstanceOf).asInstanceOf
+
   }
 
   inline given mkInstances[F[_[_]], T[_]](using gen: Generic[T]) as Instances[F, T] =

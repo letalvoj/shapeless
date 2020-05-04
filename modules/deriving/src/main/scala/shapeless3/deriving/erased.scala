@@ -28,6 +28,11 @@ abstract class ErasedProductInstances[K, FT] extends ErasedInstances[K, FT] {
   def erasedConstruct(f: Any => Any): Any
   def erasedUnfold(a: Any)(f: (Any, Any) => (Any, Option[Any])): (Any, Option[Any])
   def erasedMap(x0: Any)(f: (Any, Any) => Any): Any
+  def erasedTraverse
+    (x0: Any)
+    (f: (Any, Any) => Any)
+    (s: (Any, Any => Any) => Any): Any =
+    throw RuntimeException("Override me")
   def erasedMap2(x0: Any, y0: Any)(f: (Any, Any, Any) => Any): Any
   def erasedFoldLeft(x0: Any)(a: Any)(f: (Any, Any, Any) => CompleteOr[Any]): Any
   def erasedFoldLeft2(x0: Any, y0: Any)(a: Any)(f: (Any, Any, Any, Any) => CompleteOr[Any]): Any
@@ -71,6 +76,31 @@ final class ErasedProductInstances1[K, FT](val mirror: Mirror.Product, i: Any) e
 final class ErasedProductInstancesN[K, FT](val mirror: Mirror.Product, is: Array[Any]) extends ErasedProductInstances[K, FT] {
   import ErasedProductInstances.ArrayProduct
 
+  override def erasedTraverse
+    (x0: Any)
+    (f: (Any, Any) => Any)
+    (s: (Any, Any => Any) => Any) // (Array[U[R]], Array[R] => T[R]) => U[T[R]]
+    : Any =
+      val n = is.length
+      println(s"erasedTraverse $n")
+      if (n == 0) x0
+      else {
+        val x = toProduct(x0)
+        val arr = new Array[Any](n)
+        var i = 0
+        
+        println(s"erasedTraverse else $x $arr $i")
+        while(i < n) {
+          println(s"erasedTraverse while ${i} ${x.productElement(i)} ${is(i)}")
+          arr(i) = f(is(i), x.productElement(i))
+          i = i+1
+        }
+        println(s"erasedTraverse arr ${arr.toList}")
+        val rev = s(arr,a => mirror.fromProduct(ArrayProduct(a.asInstanceOf)))
+        println(s"erasedTraverse rev $rev")
+        rev.asInstanceOf[Any]
+      }
+
   inline def toProduct(x: Any): Product = x.asInstanceOf[Product]
 
   final def erasedConstruct(f: Any => Any): Any = {
@@ -110,17 +140,22 @@ final class ErasedProductInstancesN[K, FT](val mirror: Mirror.Product, is: Array
   }
 
   final def erasedMap(x0: Any)(f: (Any, Any) => Any): Any = {
+    println("erasedMap")
     val n = is.length
     if (n == 0) x0
     else {
       val x = toProduct(x0)
       val arr = new Array[Any](n)
       var i = 0
+      println(s"erasedMap else $x $arr $i")
       while(i < n) {
+        println(s"erasedMap while ${i} ${x.productElement(i)} ${is(i)}")
         arr(i) = f(is(i), x.productElement(i))
         i = i+1
       }
-      mirror.fromProduct(ArrayProduct(arr))
+      val r = mirror.fromProduct(ArrayProduct(arr))
+      println(s"erasedMap result $r")
+      r
     }
   }
 
